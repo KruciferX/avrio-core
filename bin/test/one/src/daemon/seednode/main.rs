@@ -47,27 +47,6 @@ use avrio_crypto::Wallet;
 
 use text_io::read;
 
-fn connect_seednodes(seednodes: Vec<SocketAddr>, connected_peers: &mut Vec<TcpStream>) -> u8 {
-    let mut conn_count: u8 = 0;
-    for peer in seednodes {
-        let error = new_connection(peer);
-        match error {
-            Ok(_) => {
-                info!("Connected to {:?}::{:?}", peer, 11523);
-                conn_count += 1;
-                let peer_struct = error.unwrap();
-                let peer_cloned = peer_struct.stream.try_clone().unwrap();
-                connected_peers.push(peer_cloned);
-            }
-            _ => warn!(
-                "Failed to connect to {:?}:: {:?}, returned error {:?}",
-                peer, 11523, error
-            ),
-        };
-    }
-    return conn_count;
-}
-
 fn generate_chains() -> Result<(), Box<dyn std::error::Error>> {
     for block in genesis_blocks() {
         info!(
@@ -103,6 +82,27 @@ fn create_file_structure() -> std::result::Result<(), Box<dyn std::error::Error>
     create_dir_all(config().db_path + &"/accounts".to_string())?;
     create_dir_all(config().db_path + &"/usernames".to_string())?;
     return Ok(());
+}
+
+fn connect(seednodes: Vec<SocketAddr>, connected_peers: &mut Vec<TcpStream>) -> u8 {
+    let mut conn_count: u8 = 0;
+    for peer in seednodes {
+        let error = new_connection(peer);
+        match error {
+            Ok(_) => {
+                info!("Connected to {:?}::{:?}", peer, 11523);
+                conn_count += 1;
+                let peer_struct = error.unwrap();
+                let peer_cloned = peer_struct.stream.try_clone().unwrap();
+                connected_peers.push(peer_cloned);
+            }
+            _ => warn!(
+                "Failed to connect to {:?}:: {:?}, returned error {:?}",
+                peer, 11523, error
+            ),
+        };
+    }
+    return conn_count;
 }
 
 fn save_wallet(keypair: &Vec<String>) -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -166,7 +166,9 @@ fn main() {
                 .short("v")
                 .value_name("loglev-val")
                 .takes_value(true)
-                .help("Sets the level of verbosity: 0: Error, 1: Warn, 2: Info, 3: debug"),
+                .help(
+                    "Sets the level of verbosity: 0: Error, 1: Warn, 2: Info, 3: Debug, 4: Trace",
+                ),
         )
         .get_matches();
     match matches.value_of("loglev").unwrap_or(&"2") {
@@ -191,7 +193,7 @@ fn main() {
 #     #    #    #     # ### ####### ";
     let mut chain_key: Vec<String> = vec![]; // 0 = pubkey, 1 = privkey
     println!("{}", art);
-    info!("Avrio Daemon Testnet v1.0.0 (pre-alpha)");
+    info!("Avrio Seednode Daemon Testnet v1.0.0 (pre-alpha)");
     let conf = config();
     conf.create().unwrap();
     info!("Launching RPC server");
@@ -203,10 +205,47 @@ fn main() {
     if !database_present() {
         create_file_structure().unwrap();
     }
+    info!("Avrio Seednode Daemon successfully launched");
     if config().chain_key == "".to_owned() {
         generate_chains().unwrap();
         let chainsdigest: String = generate_merkle_root_all().unwrap_or_default();
         info!("Chain digest: {}", chainsdigest);
+    }
+    let pl = get_peerlist();
+    let mut connections: Vec<TcpStream> = vec![];
+    connect(get_peerlist().unwrap_or_default(), &mut connections);
+    let mut connections_mut: Vec<&mut TcpStream> = connections.iter_mut().collect();
+    let syncneed = sync_needed();
+    match pl {
+        // do we need to sync
+        Ok(_) => {
+            match syncneed {
+                // do we need to sync
+                true => {
+                    info!("Starting sync (this will take some time)");
+                    if let Ok(_) = sync(&mut connections_mut) {
+                        info!("Successfully synced with the network!");
+                        synced = true;
+                    } else {
+                        error!("Syncing failed");
+                        process::exit(1);
+                    }
+                }
+                false => {
+                    info!("No sync needed");
+                    synced = true;
+                }
+            }
+        }
+        Err(_) => {
+            info!("Failed to get peerlist. Presuming first start up based on this.");
+            synced = true;
+        }
+    }
+    if synced == true {
+        info!("Your avrio daemon is now synced and up to date with the network!");
+    } else {
+        return ();
     }
     if config().chain_key == "".to_owned() {
         info!("Generating a chain for self");
@@ -216,7 +255,7 @@ fn main() {
             process::exit(1);
         } else {
             info!(
-                "Succsessfully create￼d keypair with address: {}",
+                "Succsessfully created keypair with address: {}",
                 Wallet::from_private_key(chain_key[1].clone()).address()
             );
             if let Err(e) = save_wallet(&chain_key) {
@@ -303,42 +342,7 @@ fn main() {
             process::exit(1);
         }
     });
-    let syncneed = avrio_p2p::sync_needed();
-    let mut pl: Vec<SocketAddr> = get_peerlist().unwrap_or_default();
-    if pl.len() < 1 {
-        let seednodes: Vec<SocketAddr> = vec![SocketAddr::new(
-            IpAddr::V4(Ipv4Addr::new(99, 248, 224, 55)),
-            56789,
-        )];
-        for node in seednodes {
-            pl.push(node);
-        }
-    }
-    let mut connections: Vec<TcpStream> = vec![];
-    connect_seednodes(pl, &mut connections);
-    let mut connections_mut: Vec<&mut TcpStream> = connections.iter_mut().collect();
-    match syncneed {
-        // do we need to sync
-        true => {
-            info!("Starting sync (this will take some time)");
-            if let Ok(_) = sync(&mut connections_mut) {
-                info!("Successfully synced with the network!");
-                synced = true;
-            } else {
-                error!("Syncing failed");
-                process::exit(1);
-            }
-        }
-        false => {
-            info!("No sync needed");
-            synced = true;
-        }
-    }
-    if synced == true {
-        info!("Your avrio daemon is now synced and up to date with the network!");
-    } else {
-        return ();
-    }
+
     let wall = Wallet::from_private_key(chain_key[1].clone());
     info!(
         "txn count for our chain: {}",
@@ -396,7 +400,7 @@ fn main() {
     let _ = blk.sign(&wall.private_key);
     let _ = check_block(blk.clone()).unwrap();
     let _ = saveBlock(blk.clone()).unwrap();
-    prop_block(&blk, connections_mut).unwrap();
+    let _ = prop_block(&blk, connections_mut).unwrap();
     let _ = enact_block(blk).unwrap();
     let ouracc = avrio_core::account::getAccount(&wall.public_key).unwrap();
     info!("Our balance: {}", ouracc.balance_ui().unwrap());
@@ -462,13 +466,12 @@ fn main() {
             let mut highest_so_far: u64 = 0;
             invIter.seek_to_first();
             while invIter.valid() {
-                if let Ok(height) = String::from_utf8(invIter.key().unwrap().into())
+                let height: u64 = String::from_utf8(invIter.key().unwrap().into())
                     .unwrap()
-                    .parse::<u64>()
-                {
-                    if height > highest_so_far {
-                        highest_so_far = height
-                    }
+                    .parse()
+                    .unwrap();
+                if height > highest_so_far {
+                    highest_so_far = height
                 }
                 invIter.next();
             }
@@ -693,12 +696,13 @@ fn main() {
                             let mut highest_so_far: u64 = 0;
                             invIter.seek_to_first();
                             while invIter.valid() {
-                                let height: u64 = String::from_utf8(invIter.key().unwrap().into())
+                                if let Ok(height) = String::from_utf8(invIter.key().unwrap().into())
                                     .unwrap()
-                                    .parse()
-                                    .unwrap();
-                                if height > highest_so_far {
-                                    highest_so_far = height
+                                    .parse::<u64>()
+                                {
+                                    if height > highest_so_far {
+                                        highest_so_far = height
+                                    }
                                 }
                                 invIter.next();
                             }

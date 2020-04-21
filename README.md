@@ -1,20 +1,35 @@
 # Avrio
-<b> Master Branch: ![Travis CI](https://api.travis-ci.com/avrio-project/avrio-core.svg?branch=master) Development Branch: ![Travis CI](https://api.travis-ci.com/avrio-project/avrio-core.svg?branch=development) </b>
+<b> Master branch: ![Travis CI](https://api.travis-ci.com/avrio-project/avrio-rs.svg?branch=master) Development branch: ![Travis CI](https://api.travis-ci.com/avrio-project/avrio-rs.svg?branch=development) </b>
 
-This is the rust implementaion of avrio. It currently is not ready for usage, if you wish to join the avrio network please use our [cryptonight based implementaion](https://github.com/avrio-project/avrio).
+This is the rust implementation of Avrio. It is currently not ready for usage. If you wish to join the Avrio network, please use our [cryptonight based implementation](https://github.com/avrio-project/avrio).
 
-## How To Compile
+## How to compile
 
-### Build Optimization
+### Build optimization
 
-The following instructions use the ```--release``` flag, this means cargo will optimise the code while compiling. It takes considerably longer to compile but makes the executables *much* faster. If you want to compile faster or if you are debbugging the code remove the ```release``` tag, the bins will end up in ```target/debug``` rather than ```target/release```. Please not using these debug bins will result in a considrebly lower vote and hence lower reward - on slow machines using debug may cause you to recieve bellow the minium vote (meaning you get banned for an epoch), for this reason we do not recomend you remove the ```---release``` tag unless needed.
+The following instructions use the ```--release``` flag. This means that cargo will optimize the code while compiling. It takes considerably longer to compile but makes the executables *much* faster. If you want to compile faster or if you are debugging the code, remove the ```release``` tag and the bins will end up in ```target/debug``` rather than ```target/release```. Please note that using these debug bins will result in a considerably lower vote and hence lower reward. On slower machines, using debug may cause you to receive vote below the minimum (meaning you get banned for an epoch). For this reason, we do not recommend that you remove the ```---release``` tag unless needed.
 ### Linux
 
 #### Prerequisites
+Rust makes abundant use of Rust's syntax extensions and other advanced, unstable features. Because of this, you will need to use a nightly version of Rust. If you already have a working installation of the latest Rust nightly, feel free to skip to the next section.
 
-You will need the following packages: [Boost](https://www.boost.org/), [OpenSSL](https://www.openssl.org/), rust and git.
+To install a nightly version of Rust, we recommend using rustup. Install rustup by following the instructions on its website. Once rustup is installed, configure Rust nightly as your default toolchain by running the command:
+```
+rustup default nightly
+```
+If you prefer you can use per-directory overrides to use the nightly version only for avrio by running the following command in the directory:
 
-You will also need either Cargo or rustc
+```
+rustup override set nightly
+```
+
+<span>&#9888;</span>  <b>Warning</b>: Avrio requires the latest version of Rust nightly.
+
+If avrio suddenly stops building, ensure you're using the latest version of Rust nightly and avrio by updating your toolchain and dependencies with:
+```
+rustup update && cargo update
+```
+You will also need the following packages: [Boost](https://www.boost.org/), [OpenSSL](https://www.openssl.org/) Cargo (or rustc) and git.
 
 ##### Ubuntu
 
@@ -22,12 +37,12 @@ You will also need either Cargo or rustc
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
 sudo apt-get update
 sudo apt-get install -y build-essential g++-8 gcc-8 git libboost-all-dev libssl1.0-dev cmake
-git clone -b master --single-branch https://github.com/avrio-project/avrio-core/
-cd avrio-core
+git clone -b master --single-branch https://github.com/avrio-project/avrio-rs/
+cd avrio-rs
 cargo build --release
 ```
 
-The binaries will be in the `target/release` folder when you are complete.
+After the completion, the binaries will be in the `target/release` folder.
 
 ```bash
 cd target
@@ -40,24 +55,24 @@ Ensure you have the dependencies listed above.
 
 
 ```bash
-git clone -b master --single-branch https://github.com/avrio-project/avrio-core/
-cd avrio-core
+git clone -b master --single-branch https://github.com/avrio-project/avrio-rs/
+cd avrio-rs
 cargo build --release
 ```
-The binaries will be in the `target/release` folder when you are complete.
+After the completion, the binaries will be in the `target/release` folder.
 
 ```bash
 cd target
 ./avrio-daemon
 ```
 
-## File Structure
-Each aspect of the code is split up into libiarys (eg database, blockchain, p2p), libiarys are further split up into modules (eg transaction is a module part of the core libary, genesis is a module part of the blockchain lib). If you want to use one of these libs in your code then please add the following to your Cargo.toml and clone this repo into your extern folder
-for the blockchain libiary
+## File structure
+Each aspect of the code is split up into libraries (e.g. database, blockchain, p2p). Libraries are further split into modules (e.g., transaction is a module part of the core library; genesis is a module part of the blockchain lib). If you want to use one of these libs in your code then please add the following to your Cargo.toml and clone this repo into your extern folder
+for the blockchain library
 ```avrio_<lib_name> = { path: "extern/<lib_name>" }```
-eg 
+e.g. 
 ```avrio_p2p = { path: "extern/p2p" }```
-The executables can be found in the bin folder, the testnet executables are in bin/testnet
+The executables can be found in the bin folder, the testnet executables are in bin/testnet.
 
-## Pull Requests
-Pull requests are welcomed, if you can help with the code please fork the repo, make your changes to the forked repo and then open a PR into the development branch. Please <b>NEVER</b> open a PR into the master branch, any PRs into the master branch without prior authorisation will be closed.
+## Pull requests
+Pull requests are welcomed. If you can help with the code, please fork the repo, make your changes to the forked repo and then open a PR into the development branch. Please <b>NEVER</b> open a PR into the master branch. Any PRs into the master branch without prior authorization will be closed.

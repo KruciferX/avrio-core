@@ -1,9 +1,6 @@
 language: rust
 rust: 
-  - stable
-
-cache:
-  cargo
+  - nightly
 
 addons:
   apt:
@@ -13,14 +10,7 @@ addons:
     - libboost-dev
     - clang
 
-rust:
-  - stable
-  - beta
-  - nightly
-
-matrix:
-  allow_failures:
-    - rust: nightly
+rust: nightly
  
 script:
   - cargo check

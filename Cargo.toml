@@ -7,4 +7,7 @@ members = [
   "id",
   "p2p",
   "rpc",
+  "crypto",
+  "bin/test/one",
+  "node"
 ]

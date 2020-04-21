@@ -1,10 +1,10 @@
 // This lib deals with the generation of ID's based off the random strings provided by the consensius commitee at the end of the last round
-use std::io::{stdin, stdout, Write};
+
 use std::time::{SystemTime, UNIX_EPOCH};
-extern crate rand;
 extern crate cryptonight;
+extern crate rand;
 use cryptonight::cryptonight;
-use rand::Rng;
+
 extern crate hex;
 #[macro_use]
 extern crate log;
@@ -29,22 +29,7 @@ pub struct IdDetails {
 }
 
 pub fn difficulty_bytes_as_u128(v: &Vec<u8>) -> u128 {
-    ((v[63] as u128) << 0xf * 8)
-        | ((v[62] as u128) << 0xe * 8)
-        | ((v[61] as u128) << 0xd * 8)
-        | ((v[60] as u128) << 0xc * 8)
-        | ((v[59] as u128) << 0xb * 8)
-        | ((v[58] as u128) << 0xa * 8)
-        | ((v[57] as u128) << 0x9 * 8)
-        | ((v[56] as u128) << 0x8 * 8)
-        | ((v[55] as u128) << 0x7 * 8)
-        | ((v[54] as u128) << 0x6 * 8)
-        | ((v[53] as u128) << 0x5 * 8)
-        | ((v[52] as u128) << 0x4 * 8)
-        | ((v[51] as u128) << 0x3 * 8)
-        | ((v[50] as u128) << 0x2 * 8)
-        | ((v[49] as u128) << 0x1 * 8)
-        | ((v[48] as u128) << 0x0 * 8)
+    return v.iter().sum::<u8>() as u128;
 }
 
 pub fn check_difficulty(hash: &String, difficulty: u128) -> bool {
@@ -52,15 +37,18 @@ pub fn check_difficulty(hash: &String, difficulty: u128) -> bool {
 }
 
 fn calculate_hash_params(PrevBlockHash: String) -> HashParams {
-    let mut cu = PrevBlockHash.as_bytes();
-    let mut b: Vec<u8> = cu.iter().cloned().collect();
+    let cu = PrevBlockHash.as_bytes();
+    let b: Vec<u8> = cu.iter().cloned().collect();
     let mut a: u32 = 0;
-    let mut i = 0;
+    let _i = 0;
 
     for x in &b {
         a = a + *x as u32;
     }
-    return HashParams { iterations: a * 10, memory: a * 20 }
+    return HashParams {
+        iterations: a * 10,
+        memory: a * 20,
+    };
 }
 
 fn hash_string(params: &HashParams, s: &String) -> String {
@@ -76,7 +64,7 @@ pub fn generateId(
     k: String,
     public_key: String,
     private_key: String,
-    difficulty: u128
+    difficulty: u128,
 ) -> IdDetails {
     let mut struct_: IdDetails = IdDetails::default();
     let params = HashParams {
@@ -86,8 +74,10 @@ pub fn generateId(
     let mut nonce: u32 = 0;
     let mut hashed: String;
 
-    struct_.start_t = SystemTime::now().duration_since(UNIX_EPOCH)
-    .expect("Time went backwards").as_millis() as u64;
+    struct_.start_t = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis() as u64;
 
     loop {
         nonce = nonce + 1;
@@ -97,8 +87,10 @@ pub fn generateId(
         if check_difficulty(&hashed, difficulty) {
             struct_.nonce = nonce as u64;
             struct_.hash = hashed.clone();
-            struct_.end_t = SystemTime::now().duration_since(UNIX_EPOCH)
-            .expect("Time went backwards").as_millis() as u64;
+            struct_.end_t = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_millis() as u64;
             info!(
                 "Found ID hash: {} with nonce: {} (in {} secconds)",
                 hashed,
@@ -119,9 +111,9 @@ fn sign(s: String, pk: String) -> String {
     match pkcs8_bytes {
         Ok(out) => {
             let key_pair = signature::Ed25519KeyPair::from_pkcs8(out.as_ref()).unwrap();
-let msg: &[u8] = s.as_bytes();
+            let msg: &[u8] = s.as_bytes();
             return hex::encode(key_pair.sign(msg));
-        },
+        }
         Err(e) => {
             warn!("failed to decode hex, gave error: {}", e);
             return "failed to hex decode".to_string();
